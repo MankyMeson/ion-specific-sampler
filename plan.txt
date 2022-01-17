@@ -1,0 +1,28 @@
+This ion specific sampler aims to place electrons in a suitable position
+based on the atomic number of the ion. Based on the work of Simas et al.
+in "The radial charge distribution and the shell structure of atoms and
+ions", who computed the radial charge distribution D(r) from hydrogen
+through uranium of neutral atoms.
+
+useful wiki pages:
+    https://en.wikipedia.org/wiki/Slater%27s_rules
+    https://en.wikipedia.org/wiki/Slater-type_orbital
+
+Stuff to note:
+    At most 5 shells are apparent.
+    The positions of the maxima in D(r) are shown to correlate with
+    the shell radii from the Bohr-Schroedinger model of the atom.
+    Slater-type function with radial part R(r) = Cr^(n-1)exp(-zeta*r)
+    leads to a D(r) that peaks at r = n/zeta.
+    n : principal atomic number
+    zeta : effective atomic number based on shielding from inner
+    electrons.
+    C = (2*zeta)^n * sqrt(2zeta/(2n)!
+
+The program could take each electron, assign them a random angular
+component and place the electron radially according to the modal
+position for that orbital. Alternatively it could use the slater-type
+function detailed above as a probability density function for a random
+sampler. The former method is likely much easier as the peaks are well
+defined.
+
