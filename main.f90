@@ -24,37 +24,53 @@ contains
         n_degen = d
     end function
 
-    function orbital_gen(ele)
-        integer :: ele, i, n, l, nplusl
-        integer, dimension(2) :: orbital_gen
-        ! given the number of the electron used, this function
-        ! returns the orbital in the form (n,l)
-        i = ele
-        n = 1
-        l = 0
-        nplusl = 1
-        do nplusl = 1,10
-            do n = ((nplusl/2)+1),nplusl
-                l = nplusl - n
-                i = i - (4*l + 2)
-                if (i<=0) then
-                    exit
-                end if
-            end do
+    real(dp) function dist(r,Z,I)
+        ! this function controls the distribution being sampled
+        real(dp) :: r, I
+        integer :: Z
+        dist = r**2*(exp(-2.d0*Z*r) + exp(-2*(r**2)*sqrt(2*I)))
+    end function
+
+    real(dp) function norm_coeff(Z,I)
+        ! Trapezoid integrator to find Z and I specific normalisation coefficient
+        ! the integrand is asymptotic to 0 in the positive r direction so a suitable
+        ! cutoff can be chosen
+
+        real(dp) :: I, r1, r2, area, f1, f2, width
+        real(dp), parameter :: cutoff_r = 100.d0
+        integer :: Z, trpzd
+        integer, parameter :: nr_trapezoids = 1000
+
+        width = cutoff_r/nr_trapezoids
+
+        area = 0.d0
+        do trpzd = 1,nr_trapezoids
+            r1 = (trpzd-1)*width
+            r2 = trpzd*width
+            f1 = dist(r1,Z,I)
+            f2 = dist(r1,Z,I)
+            area = area + width*(f1+f2)/2
         end do
-!       do n = 1,10
-!           i = i - n_degen(n)
-!           if (i<=0) then
-!               do l = n-1,0,-1
-!                   i = i + 4*l + 2
-!                   if (i>0) then
-!                       exit
-!                   end if
-!               end do
-!               exit
-!           end if
-!       end do
-        orbital_gen = (/n,l/)
+
+        norm_coeff = 1/area
+    end function
+
+    real(dp) function rand_r(Z,I,norm)
+        ! Samples r using a von Neumann acceptance-rejection method
+        real(dp) :: I, cutoff_radius, r, norm
+        real(dp), dimension(2) :: rands
+        integer :: Z
+
+        do
+            call random_number(rands)
+            cutoff_radius = 5.d0
+            r = rands(1)*cutoff_radius
+            if (cutoff_radius*rands(2) < dist(r,Z,I)*norm) then
+                exit
+            end if
+        end do
+
+        rand_r = r
     end function
 
 end module sampler
@@ -63,15 +79,15 @@ end module sampler
 program ionspecificsampler
     use sampler
     implicit none
-    integer :: ele, n_ele, Z_ion, l, max_l, n
-    integer, dimension(2) :: orbital
-    real(dp) :: phi, cos_theta, sin_theta, zeta
+    integer :: ele, n_ele, Z_ion
+    real(dp) :: phi, cos_theta, I, C, r
     real(dp), dimension(:,:), allocatable :: ele_dist_cartesian, ele_dist_spherical, angular_rand_nums
 
-    n_ele = 100
-    Z_ion = 2
+    n_ele = 10000000
+    Z_ion = 87
+    I = 0.5d0
 
-    max_l = 3 ! highest l quantum number found in the system
+    C = norm_coeff(Z_ion,I)
 
     allocate (angular_rand_nums(2,n_ele))
     call random_number(angular_rand_nums)
@@ -81,15 +97,13 @@ program ionspecificsampler
     do ele = 1, n_ele
         phi = rand_phi(angular_rand_nums(1,ele))
         cos_theta = rand_cos_theta(angular_rand_nums(2,ele))
+        r = rand_r(Z_ion,I,C)
 
-        ! peaks at n/zeta, zeta is the effective Z_ion
-        orbital = orbital_gen(ele)
-        n = orbital(1)
-        l = orbital(2)
-        if (orbital(1)==1.and.orbital(2)==0) then
-            zeta = Z_ion - 0.3d0 * ele
-        end if
-        print *, n, l
+        print*, r, acos(cos_theta), phi
+
+        ele_dist_spherical(1,ele) = r
+        ele_dist_spherical(2,ele) = acos(cos_theta)
+        ele_dist_spherical(3,ele) = phi
 
     end do
 
