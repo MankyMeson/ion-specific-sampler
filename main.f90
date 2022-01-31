@@ -84,6 +84,7 @@ contains
 
         ! First need to find the maxvalue of dist(r,Z,I)
         max_r = 0.d0
+        cutoff_radius = 5.d0
         do i = 1,1001
             r = dble((i-1))*cutoff_radius/1000.d0
             if (dist(r,Z,I) > dist(max_r,Z,I)) then
@@ -93,7 +94,6 @@ contains
 
         do
             call random_number(rands)
-            cutoff_radius = 5.d0
             r = rands(1)*cutoff_radius
 !           if (cutoff_radius*rands(2) < dist(r,Z,I)*norm) then
             if (max_r*rands(2) < dist(r,Z,I)) then
