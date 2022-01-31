@@ -43,7 +43,8 @@ contains
         real(dp) :: r, I
         integer :: Z
 
-        dist = r**2*(exp(-2.d0*Z*r) + exp(-2*(r**2)*sqrt(2*I)))
+!       dist = r**2*(exp(-2.d0*Z*r) + exp(-2*(r**2)*sqrt(2*I)))
+        dist = r**2*exp((-2.d0*Z*r*(1+sqrt(2.d0*I)*r))/(1.d0+Z*r)) ! specifically the one discussed during the meeting
 
     end function
 
@@ -77,19 +78,27 @@ contains
     real(dp) function rand_r(Z,I,norm)
         ! Samples r using a von Neumann acceptance-rejection method
 
-        real(dp) :: I, cutoff_radius, r, norm
+        real(dp) :: I, cutoff_radius, r, norm, max_r
         real(dp), dimension(2) :: rands
-        integer :: Z
+        integer :: Z, iter
+
+        ! First need to find the maxvalue of dist(r,Z,I)
+        max_r = 0.d0
+        do i = 1,1001
+            r = dble((i-1))*cutoff_radius/1000.d0
+            if (dist(r,Z,I) > dist(max_r,Z,I)) then
+                max_r = r
+            end if
+        end do
 
         do
             call random_number(rands)
             cutoff_radius = 5.d0
             r = rands(1)*cutoff_radius
-
-            if (cutoff_radius*rands(2) < dist(r,Z,I)*norm) then
+!           if (cutoff_radius*rands(2) < dist(r,Z,I)*norm) then
+            if (max_r*rands(2) < dist(r,Z,I)) then
                 exit
             end if
-
         end do
 
         rand_r = r
@@ -153,7 +162,6 @@ program ionspecificsampler
     allocate (ele_dist_r(n_ele))
 
     do ele = 1, n_ele
-
         phi = rand_phi(angular_rand_nums(1,ele))
         cos_theta = rand_cos_theta(angular_rand_nums(2,ele))
         r = rand_r(Z_ion,I,C)
@@ -165,7 +173,6 @@ program ionspecificsampler
         ele_dist_spherical(1,ele) = r
         ele_dist_spherical(2,ele) = acos(cos_theta)
         ele_dist_spherical(3,ele) = phi
-
     end do
 
     deallocate (angular_rand_nums)
